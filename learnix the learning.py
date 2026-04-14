@@ -1,130 +1,202 @@
-import pygame
-import sys
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Learnix - Python Online</title>
+    <style>
+        :root {
+            --green: #58cc02;
+            --blue: #1cb0f6;
+            --red: #ff4b4b;
+            --bg: #f0f4f7;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #app-container {
+            width: 400px;
+            height: 700px;
+            background: white;
+            border-radius: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .screen { display: none; padding: 20px; text-align: center; height: 100%; }
+        .active { display: flex; flex-direction: column; justify-content: center; }
 
-# Sozlamalar
-pygame.init()
-WIDTH, HEIGHT = 900, 700
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Learnix: Robo-Pet Edition")
+        /* Splash Screen */
+        #splash { background: white; font-size: 40px; font-weight: bold; color: var(--green); }
+        .fade-out { animation: fadeOut 1.5s forwards; }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; visibility: hidden; } }
 
-# Ranglar
-WHITE, BG, GREEN, RED, BLUE = (255, 255, 255), (240, 244, 247), (88, 204, 2), (255, 75, 75), (28, 176, 246)
-TEXT_COLOR = (75, 75, 75)
-
-# Shriftlar
-font_md = pygame.font.SysFont("Segoe UI", 26, bold=True)
-font_sm = pygame.font.SysFont("Segoe UI", 20)
-
-# Petni yuklash (Rasm bo'lmasa, doira chizib turadi)
-try:
-    pet_image = pygame.image.load("pet.png")
-    pet_image = pygame.transform.scale(pet_image, (150, 150))
-except:
-    pet_image = None
-
-def draw_text(text, pos, color=TEXT_COLOR, bold=False):
-    f = font_md if bold else font_sm
-    img = f.render(text, True, color)
-    screen.blit(img, pos)
-
-def run_app():
-    clock = pygame.time.Clock()
-    state = "NAME" # NAME, GOAL, MAP, QUIZ, RESULT
-    user_name = ""
-    user_goal = ""
-    health = 5
-    score = 0
-    total_q = 4 # Har bosqichda 4 ta savol
-    cur_q_idx = 0
-    pet_mood = "HAPPY" # HAPPY, SAD
-
-    # Savollar (Ko'paytirildi)
-    questions = [
-        {"q": "Python nima?", "o": ["Til", "O'yin", "Ilon"], "c": 0},
-        {"q": "Ekranga chiqarish?", "o": ["input", "print", "write"], "c": 1},
-        {"q": "Sonli tur?", "o": ["string", "integer", "boolean"], "c": 1},
-        {"q": "Izoh qoldirish?", "o": ["//", "/*", "#"], "c": 2}
-    ]
-
-    while True:
-        m_pos = pygame.mouse.get_pos()
-        screen.fill(BG)
+        /* General Styles */
+        input { padding: 10px; border: 2px solid #ddd; border-radius: 10px; width: 80%; margin: 10px 0; font-size: 16px; }
+        button { 
+            padding: 12px; background: var(--blue); color: white; border: none; 
+            border-radius: 15px; cursor: pointer; font-weight: bold; margin: 5px;
+            box-shadow: 0 4px #1899d6;
+        }
+        button:active { transform: translateY(4px); box-shadow: none; }
         
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT: pygame.quit(); sys.exit()
-            
-            if event.type == pygame.KEYDOWN:
-                if state == "NAME":
-                    if event.key == pygame.K_RETURN and len(user_name) > 1: state = "GOAL"
-                    elif event.key == pygame.K_BACKSPACE: user_name = user_name[:-1]
-                    else: user_name += event.unicode
-            
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if state == "GOAL":
-                    # Maqsadni tanlash (Soddalashtirildi)
-                    if pygame.Rect(300, 250, 300, 50).collidepoint(m_pos):
-                        user_goal = "Dasturchi bo'lish"; state = "MAP"
-                
-                elif state == "MAP":
-                    if health > 0: state = "QUIZ"
-                
-                elif state == "QUIZ":
-                    for i in range(3):
-                        if pygame.Rect(100, 250 + i*70, 400, 50).collidepoint(m_pos):
-                            if i == questions[cur_q_idx]["c"]:
-                                score += 1
-                            else:
-                                health -= 1 # Xato qilsa quvvat ketadi
-                            
-                            if cur_q_idx < total_q - 1:
-                                cur_q_idx += 1
-                            else:
-                                # Natijani hisoblash (75% = 3 ta to'g'ri)
-                                percentage = (score / total_q) * 100
-                                pet_mood = "HAPPY" if percentage >= 75 else "SAD"
-                                state = "RESULT"
+        /* Pet Image */
+        .pet { width: 120px; margin-bottom: 20px; }
 
-        # --- CHIZISH ---
-        # Petni ko'rsatish
-        pet_pos = (650, 150)
-        if pet_image:
-            screen.blit(pet_image, pet_pos)
-        else:
-            pygame.draw.circle(screen, BLUE, (750, 250), 50)
+        /* Progress & Health */
+        .top-bar { display: flex; justify-content: space-between; padding: 10px 20px; background: white; border-bottom: 2px solid #eee; }
+        .health { color: var(--red); font-weight: bold; }
 
-        # Holatga qarab Robo-Learnix gapi
-        if state == "NAME":
-            draw_text("Salom! Men Learnix-man. Isming nima?", (100, 150), bold=True)
-            pygame.draw.rect(screen, WHITE, (100, 200, 300, 50), border_radius=10)
-            draw_text(user_name + "|", (110, 210), BLUE)
+        /* Map Road */
+        .road { display: flex; flex-direction: column-reverse; align-items: center; gap: 40px; padding: 40px 0; }
+        .node { width: 60px; height: 60px; background: #e5e5e5; border-radius: 50%; display: flex; 
+                justify-content: center; align-items: center; font-weight: bold; color: white; cursor: pointer; }
+        .node.active { background: var(--green); box-shadow: 0 6px #46a302; }
+    </style>
+</head>
+<body>
 
-        elif state == "MAP":
-            # Quvvat bari
-            draw_text(f"Quvvat: {'❤️' * health}", (20, 20), RED)
-            draw_text(f"O'quvchi: {user_name}", (20, 60), bold=True)
-            pygame.draw.circle(screen, GREEN, (450, 350), 60) # Start tugmasi
-            draw_text("BOSHLASH", (400, 340), WHITE, True)
+<div id="app-container">
+    <div id="splash" class="screen active">LEARNIX</div>
 
-        elif state == "QUIZ":
-            q = questions[cur_q_idx]
-            draw_text(f"Savol {cur_q_idx+1}/{total_q}", (100, 100), BLUE)
-            draw_text(q["q"], (100, 160), bold=True)
-            for i, opt in enumerate(q["o"]):
-                r = pygame.Rect(100, 250 + i*70, 400, 50)
-                pygame.draw.rect(screen, WHITE, r, border_radius=15)
-                draw_text(opt, (120, 260 + i*70))
+    <div id="reg-name" class="screen">
+        <img src="pet.png" alt="Pet" class="pet" onerror="this.src='https://cdn-icons-png.flaticon.com/512/4712/4712035.png'">
+        <h3>Salom! Isming nima?</h3>
+        <input type="text" id="userNameInput" placeholder="Ismingiz...">
+        <button onclick="saveName()">Keyingisi</button>
+    </div>
 
-        elif state == "RESULT":
-            if pet_mood == "HAPPY":
-                draw_text("URRA! Sen 75% dan ko'p topding!", (150, 250), GREEN, True)
-                draw_text("Robo-Learnix juda hursand! 😊", (150, 300))
-            else:
-                draw_text("AFSUS... Natija past.", (150, 250), RED, True)
-                draw_text("Robo-Learnix xafa bo'ldi. 😟", (150, 300))
-            
-            draw_text(f"To'g'ri javoblar: {score}/{total_q}", (150, 350))
+    <div id="reg-goal" class="screen">
+        <h3>Nega Python o'rganasiz?</h3>
+        <button onclick="saveGoal('O\'yin yaratish')">O'yin yaratish</button>
+        <button onclick="saveGoal('Ish topish')">Ish topish</button>
+        <button onclick="saveGoal('Maktab uchun')">Maktab uchun</button>
+    </div>
 
-        pygame.display.flip()
-        clock.tick(60)
+    <div id="map-screen" class="screen">
+        <div class="top-bar">
+            <span id="display-name">Ism</span>
+            <span class="health">❤️ <span id="health-val">5</span></span>
+        </div>
+        <div class="road">
+            <div class="node active" onclick="startQuiz()">1</div>
+            <div class="node">2</div>
+            <div class="node">3</div>
+            <div class="node">4</div>
+            <div class="node">5</div>
+        </div>
+    </div>
 
-run_app()
+    <div id="quiz-screen" class="screen">
+        <h4 id="question-text">Savol?</h4>
+        <div id="options-container" style="display:flex; flex-direction:column;"></div>
+        <p id="feedback"></p>
+    </div>
+
+    <div id="final-screen" class="screen">
+        <img src="pet.png" id="final-pet" class="pet" onerror="this.src='https://cdn-icons-png.flaticon.com/512/4712/4712035.png'">
+        <h2 id="result-msg">Natija</h2>
+        <button onclick="location.reload()">Qayta boshlash</button>
+    </div>
+</div>
+
+<script>
+    let userName = "";
+    let userGoal = "";
+    let health = 5;
+    let score = 0;
+    let currentQ = 0;
+
+    const questions = [
+        {q: "Python nima?", o: ["Dasturlash tili", "Ilon turi", "O'yin"], c: 0},
+        {q: "Ekranga chiqarish?", o: ["input()", "print()", "save()"], c: 1},
+        {q: "Butun son turi?", o: ["float", "int", "str"], c: 1},
+        {q: "Izoh belgisi?", o: ["//", "#", "/*"], c: 1}
+    ];
+
+    // Splash to Name
+    setTimeout(() => {
+        showScreen('reg-name');
+    }, 2000);
+
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+
+    function saveName() {
+        userName = document.getElementById('userNameInput').value;
+        if(userName.length > 1) showScreen('reg-goal');
+    }
+
+    function saveGoal(goal) {
+        userGoal = goal;
+        document.getElementById('display-name').innerText = userName;
+        showScreen('map-screen');
+    }
+
+    function startQuiz() {
+        showScreen('quiz-screen');
+        loadQuestion();
+    }
+
+    function loadQuestion() {
+        const q = questions[currentQ];
+        document.getElementById('question-text').innerText = q.q;
+        const container = document.getElementById('options-container');
+        container.innerHTML = "";
+        q.o.forEach((opt, idx) => {
+            const btn = document.createElement('button');
+            btn.innerText = opt;
+            btn.onclick = () => checkAnswer(idx);
+            container.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(idx) {
+        if(idx === questions[currentQ].c) {
+            score++;
+            document.getElementById('feedback').innerText = "To'g'ri! ✅";
+            document.getElementById('feedback').style.color = "var(--green)";
+        } else {
+            health--;
+            document.getElementById('health-val').innerText = health;
+            document.getElementById('feedback').innerText = "Xato! ❌";
+            document.getElementById('feedback').style.color = "var(--red)";
+        }
+
+        setTimeout(() => {
+            document.getElementById('feedback').innerText = "";
+            if(currentQ < questions.length - 1) {
+                currentQ++;
+                loadQuestion();
+            } else {
+                finishQuiz();
+            }
+        }, 1000);
+    }
+
+    function finishQuiz() {
+        showScreen('final-screen');
+        const percentage = (score / questions.length) * 100;
+        if(percentage >= 75) {
+            document.getElementById('result-msg').innerText = "Barakalla! " + userName + " 😊";
+            document.getElementById('result-msg').style.color = "var(--green)";
+        } else {
+            document.getElementById('result-msg').innerText = "Robot xafa bo'ldi... 😟";
+            document.getElementById('result-msg').style.color = "var(--red)";
+        }
+    }
+</script>
+
+</body>
+</html>
